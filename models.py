@@ -36,19 +36,20 @@ class PrintLayer(nn.Module):
 
 
 class ResNet9_dropout(nn.Module):
-    def __init__(self, p_fixed = 0.2, p_mem = 0.1, num_batches = 100, drop_mode = "train", in_channels = 3, fac = 1, NUM_CLASSES = 10):
+    def __init__(self, p_fixed = 0.2, p_mem = 0.1, dropout="classic", drop_mode = "train", in_channels = 3, fac = 1, NUM_CLASSES = 10):
         super(ResNet9_dropout, self).__init__()
         self.p_fixed = p_fixed
         self.p_mem = p_mem
-        self.num_batches = num_batches
         self.drop_mode = drop_mode
 
-        dims = [in_channels, 64, 128, 128, 128, 256, 256, 256,128]
+        dims = [in_channels, 64, 128, 128, 128, 256, 256, 256, 128]
         dims = [int(d*fac) for d in dims]
         dims[0] = in_channels
         self.dims = dims
 
-        self.dropout = self.get_dropout(p_fixed, p_mem, num_batches, drop_mode)
+        self.dropouts = nn.ModuleList()
+        for _ in range(6):
+            self.dropouts.append(self.get_dropout(p_fixed, p_mem, drop_mode, drop_type=dropout))
 
         self.conv1 = conv_bn(dims[0], dims[1], kernel_size=3, stride=1, padding=1)
         self.conv2 = conv_bn(dims[1], dims[2], kernel_size=5, stride=2, padding=2)
@@ -62,29 +63,34 @@ class ResNet9_dropout(nn.Module):
         self.linear = nn.Linear(dims[8], NUM_CLASSES, bias=False)
         self.mul  = Mul(0.2)
 
-    def get_dropout(self, p_fixed, p_mem, num_batches, drop_mode):
-        # return ExampleTiedDropout(p_fixed=p_fixed, p_mem=p_mem,num_batches=num_batches, drop_mode = drop_mode)
-        return nn.Dropout(p=p_fixed)
+    def change_dropout_mode(self, drop_mode):
+        for i in range(6):
+            self.dropouts[i].drop_mode = drop_mode
+
+    def get_dropout(self, p_fixed, p_mem, drop_mode, drop_type="classic"):
+        if drop_type == "classic":
+            return nn.Dropout(p=p_fixed)
+        return ExampleTiedDropout(p_fixed=p_fixed, p_mem=p_mem, drop_mode = drop_mode)      
 
     def forward(self, x, **kwargs):
         x = self.conv1(x)
-        x = self.dropout(x)
+        x = self.dropouts[0](x, **kwargs)
 
         x = self.conv2(x)
-        x = self.dropout(x)
+        x = self.dropouts[1](x, **kwargs)
 
         x = self.res1(x)
-        x = self.dropout(x)
+        x = self.dropouts[2](x, **kwargs)
 
         x = self.conv3(x)
-        x = self.dropout(x)
+        x = self.dropouts[3](x, **kwargs)
 
         x = self.maxpool(x)
         x = self.res2(x)
-        x = self.dropout(x)
+        x = self.dropouts[4](x, **kwargs)
 
         x = self.conv4(x)
-        x = self.dropout(x)
+        x = self.dropouts[5](x, **kwargs)
 
         x = self.pool(x)
         x = self.flatten(x)

@@ -6,7 +6,7 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.optim import SGD, lr_scheduler
 import logging
 logging.getLogger("pl_bolts").setLevel(logging.ERROR)
-from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+# from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 
 classes_mapper = {
         "cifar10":10,
