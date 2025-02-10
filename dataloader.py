@@ -1,7 +1,7 @@
 from torchvision import transforms,datasets
 import torch
 import numpy as np
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import random, copy
 import os
 from utils import *
@@ -206,6 +206,10 @@ def return_loaders(all_args, get_frac = True, shuffle = True, split_ratio = 0.5,
     batch_size = all_args["batch_size"]
       
     d1_tr, mask_noise1, mask_rare1 = get_dset(split, all_args["dataset1"], all_args["noise_1"], indices1, all_args["minority_1"], all_args["seed"], all_args["log_factor"], all_args["seed_superclass"], split_ratio= split_ratio, aug = aug)
+    if limit is not None:
+        indices = np.random.choice(mask_noise1.size, limit, replace=False)
+        mask_noise1 = mask_noise1[indices]
+        d1_tr = Subset(d1_tr, indices)
 
     if all_args["cscore"] > 0: 
         d1_tr, mask_noise1 = adjust_for_cscore(d1_tr, mask_noise1)
